@@ -1535,7 +1535,7 @@ chromosome runQPHH(string Model,string ECfileName,string XmlFile, string RscAlcF
 					swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
 					swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
 					swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
-					GnrML_Evl_MEC_S_QHH(tempElitePopulation[i]);
+					GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
 					}));
 			}
 
