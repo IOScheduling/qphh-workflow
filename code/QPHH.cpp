@@ -1,4 +1,5 @@
-﻿
+"""
+"""
 #include <fstream>
 #include <sstream>
 #include "QPHH.h"
@@ -1526,59 +1527,101 @@ chromosome runQPHH(string Model,string ECfileName,string XmlFile, string RscAlcF
 		int index = 0;
 
 		switch (action) {
-			case 0: {
-				//cout << "action = " << action << endl;
-				vector<future<void>> futures;
-				for (int i = index; i < tempElitePopulation.size(); i++) {
-					futures.push_back(async(launch::async, [&, i] {
-						swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
-						swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
-						swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
-						GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
-						}));
-				}
-
-				for (auto& f : futures) {
-					f.get();
-				}
-				break;
-			}
-			case 1: {
-				//case1(tempElitePopulation);
-				//cout << "action = " << action << endl;
-				vector<future<void>> futures;
-
-				for (int i = index; i < tempElitePopulation.size(); i++) {
-					futures.push_back(async(launch::async, [&, i] {
-						insertTaskInSchedule(tempElitePopulation[i]);
-						insertTaskInScheduleFrontHal(tempElitePopulation[i]);
-						insertTaskInScheduleBackHal(tempElitePopulation[i]);
-						GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
-						}));
-				}
-
-				for (auto& f : futures) {
-					f.get();
-				}
-				break;
+		case 0: {
+			//cout << "action = " << action << endl;
+			vector<future<void>> futures;
+			for (int i = index; i < tempElitePopulation.size(); i++) {
+				futures.push_back(async(launch::async, [&, i] {
+					swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
+					swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
+					swapTwoTasksInSchedule(tempElitePopulation[i], swappedPairs[i]);
+					GnrML_Evl_MEC_S_QHH(tempElitePopulation[i]);
+					}));
 			}
 
-			case 2: {
-				//cout << "action = " << action << endl;
-				vector<future<void>> futures;
+			for (auto& f : futures) {
+				f.get();
+			}
+			break;
+		}
+		case 1: {
+			vector<future<void>> futures;
 
-				for (int i = index; i < tempElitePopulation.size(); i++) {
-					futures.push_back(async(launch::async, [&, i] {
-						swapTwoTasksInSameLvl(tempElitePopulation[i], swappedPairs[i]);
-						GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
-						}));
-				}
+			for (int i = index; i < tempElitePopulation.size(); i++) {
+				futures.push_back(async(launch::async, [&, i] {
+					insertTaskInSchedule(tempElitePopulation[i]);
+					insertTaskInScheduleFrontHal(tempElitePopulation[i]);
+					insertTaskInScheduleBackHal(tempElitePopulation[i]);
+					GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
+					}));
+			}
 
-				for (auto& f : futures) {
-					f.get();
-				}
-				break;
-			}		
+			for (auto& f : futures) {
+				f.get();
+			}
+			break;
+		}
+
+		case 2: {
+			vector<future<void>> futures;
+
+			for (int i = index; i < tempElitePopulation.size(); i++) {
+				futures.push_back(async(launch::async, [&, i] {
+					insertTaskToBstPosition(tempElitePopulation[i]);
+					}));
+			}
+
+			for (auto& f : futures) {
+				f.get();
+			}
+			break;
+		}
+		case 3: {
+			vector<future<void>> futures;
+
+			for (int i = index; i < tempElitePopulation.size(); i++) {
+				futures.push_back(async(launch::async, [&, i] {
+					insertTaskAfterNearestParent(tempElitePopulation[i]);
+					GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
+					}));
+			}
+
+			for (auto& f : futures) {
+				f.get();
+			}
+			break;
+		}
+		case 4: {
+			vector<future<void>> futures;
+
+			for (int i = index; i < tempElitePopulation.size(); i++) {
+				futures.push_back(async(launch::async, [&, i] {
+					swapTwoTasksInSameLvl(tempElitePopulation[i], swappedPairs[i]);
+					GnrML_Evl_MEC_S_QPHH(tempElitePopulation[i]);
+					}));
+			}
+
+			for (auto& f : futures) {
+				f.get();
+			}
+			break;
+		}
+
+		case 5: {
+			vector<future<void>> futures;
+
+			for (int i = index; i < tempElitePopulation.size(); i++) {
+				futures.push_back(async(launch::async, [&, i] {
+					insertTaskPairsToBstPosition(tempElitePopulation[i]);
+					}));
+			}
+
+			for (auto& f : futures) {
+				f.get();
+			}
+			break;
+		}
+
 		}
 
 		vector <chromosome> sortTempElitePopulation(tempElitePopulation.begin(), tempElitePopulation.end());
