@@ -1,4 +1,4 @@
-﻿
+
 #include "TSEDA.h"
 #include "tools.h"
 #include "config.h"
@@ -68,7 +68,6 @@ chromosome runTSEDA(string Model, string ECfileName, string XmlFile, string RscA
             GnrML_Evl_MEC_S(Population[n]);
         }
 
-        // 更新最优个体
         for (int n = 0; n < Parameter_TSEDA.NumOfChromPerPop; ++n) {
             if (Population[n].EnergyConsumption + PrecisionValue < BstChrom.EnergyConsumption)
                 BstChrom = Population[n];
@@ -76,14 +75,13 @@ chromosome runTSEDA(string Model, string ECfileName, string XmlFile, string RscA
 
         UpdatePMR(PMR, BstChrom); 
         UpdatePMS(PMS, BstChrom);  
-        cout << "iteration1: " << iteration << endl;
         ++iteration;
 
         RunTime = (double)(clock() - start) / CLOCKS_PER_SEC;
 
         std::ofstream outFile(ECfileName, std::ios::app);
         if (!outFile) {
-            std::cerr << "无法打开文件: " << ECfileName << std::endl;
+            std::cerr << "can not open: " << ECfileName << std::endl;
             break;
         }
 
@@ -132,16 +130,14 @@ chromosome runTSEDA(string Model, string ECfileName, string XmlFile, string RscA
 
         UpdatePMR(PMR, BstChrom); 
         UpdatePMS(PMS, BstChrom);
-        cout << "iteration2: " << iteration << endl;
         ++iteration;
         RunTime = (double)(clock() - start) / CLOCKS_PER_SEC;
 
         std::ofstream outFile(ECfileName2, std::ios::app);
         if (!outFile) {
-            std::cerr << "无法打开文件: " << ECfileName2 << std::endl;
+            std::cerr << "cannot open: " << ECfileName2 << std::endl;
             break;
         }
-        cout << BstChrom.EnergyConsumption << endl;
         string algName = "TSEDA";
         if (BstChrom.EnergyConsumption + PrecisionValue <= originBstEC)
         {
