@@ -10,36 +10,27 @@
 #include <chrono>
 
 
-// 事件结构，表示任务开始或结束的时间点
+
 struct Event {
-    double time;   // 时间点
-    bool isStart;  // 是否为开始时间
-    int taskId;    // 任务ID
+    double time;   
+    bool isStart;  
+    int taskId;    
     bool operator<(const Event& other) const {
         return time < other.time;
     }
 };
 
 
-/*****************************************************
-Function:{calculate the average execution time of tasks}
-计算每个任务的平均执行时间，并将结果存储在向量 w 中
 
-*****************************************************/
 
 void W_Cal_Average_S(vector<double>& w) {
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         double sum = 0;
-        double AllTransferData = Tasks[i].IFileSizeSum + Tasks[i].OFileSizeSum;//用于存储任务的输入和输出文件大小之和。
-        for (int RscId : Tasks[i].ElgRsc)//遍历当前任务 i 的所有可用资源 ElgRsc。
-            /*
-            1. 任务长度除以资源的处理能力 Rscs[RscId].pc，得到任务在该资源上的处理时间。
-            2. 总数据传输量 AllTransferData 除以一个常数 VALUE，再乘以 8（将字节转换为位），除以资源的带宽 Rscs[RscId].bw，得到数据传输时间。
-            3. 将两部分时间相加，累加到 sum 中。
-            */
+        double AllTransferData = Tasks[i].IFileSizeSum + Tasks[i].OFileSizeSum;
+        for (int RscId : Tasks[i].ElgRsc)
             sum += Tasks[i].length / Rscs[RscId].pc + AllTransferData / VALUE * 8 / Rscs[RscId].bw;
             
-        w[i] = sum / Tasks[i].ElgRsc.size();//sum 除以任务的可用资源数量 Tasks[i].ElgRsc.size()
+        w[i] = sum / Tasks[i].ElgRsc.size();
     }
 }
 //{calculate the average transfer time among tasks}
@@ -68,71 +59,49 @@ void C_Cal_Average(vector<vector<double>>& c) {
     }
 }
 
-/*****************************************************
-Function:calculate the rank of tasks based on shared database
-它根据任务的执行时间和任务层级，
-计算每个任务的排名值并存储在 RankList 向量中。
 
-随机
-
-*****************************************************/
 
 void Calculate_Rank_Rand_S(vector<double>& RankList, vector<double>& RandPri) {
 
-    //对于最底层任务，排名值初始化为该任务的执行时间
+
     for (int i = 0; i < TskLstInLvl[TskLstInLvl.size() - 1].size(); ++i) {
         int TaskId = TskLstInLvl[TskLstInLvl.size() - 1][i];
         RankList[TaskId] = RandPri[TaskId];
     }
 
-    //从倒数第二层开始向上计算任务排名
     for (int i = TskLstInLvl.size() - 2; i >= 0; --i) {
-        //开始向上逐层遍历
+
         for (int TaskId : TskLstInLvl[i]) {
 
-            //对于每一个任务，遍历子任务
+
             for (int Child : Tasks[TaskId].children) {
-                //如果当前任务排名+精度值 < 子任务排名，则更新当前任务排名值为子任务排名值
                 if (RankList[TaskId] + PrecisionValue < RankList[Child]) {
                     RankList[TaskId] = RankList[Child];
                 }
             }
-            //将当前任务执行时间 + 当前任务的排名值，得到最终的排名值
             RankList[TaskId] = RankList[TaskId] + RandPri[TaskId];
         }
     }
 }
 
 
-/*****************************************************
-Function:calculate the rank of tasks based on shared database
-它根据任务的执行时间和任务层级，
-计算每个任务的排名值并存储在 RankList 向量中。
 
-
-*****************************************************/
 
 void Calculate_Rank_b_S(vector<double>& RankList, vector<double>& ExeTime) {
 
-    //对于最底层任务，排名值初始化为该任务的执行时间
     for (int i = 0; i < TskLstInLvl[TskLstInLvl.size() - 1].size(); ++i) {
         int TaskId = TskLstInLvl[TskLstInLvl.size() - 1][i];
         RankList[TaskId] = ExeTime[TaskId];
     }
 
-    //从倒数第二层开始向上计算任务排名
-    for (int i = TskLstInLvl.size() - 2; i >= 0; --i) {
-        //开始向上逐层遍历
-        for (int TaskId : TskLstInLvl[i]) {
 
-            //对于每一个任务，遍历子任务
+    for (int i = TskLstInLvl.size() - 2; i >= 0; --i) {
+        for (int TaskId : TskLstInLvl[i]) {
             for (int Child : Tasks[TaskId].children) {
-                //如果当前任务排名+精度值 < 子任务排名，则更新当前任务排名值为子任务排名值
                 if (RankList[TaskId] + PrecisionValue < RankList[Child]) {
                     RankList[TaskId] = RankList[Child];
                 }
             }
-            //将当前任务执行时间 + 当前任务的排名值，得到最终的排名值
             RankList[TaskId] = RankList[TaskId] + ExeTime[TaskId];
         }
     }
@@ -186,15 +155,14 @@ chromosome GnrChr_HEFT_b_t_S(vector<double> Rank_b_t) {
 chromosome GnrChr_HEFT_S(vector<double> Rank_b) {
     vector<int> ind(comConst.NumOfTsk);
     chromosome TemChrom;
-    IntChr(TemChrom);//初始化
-    IndexSortByValueOnAscend(ind, Rank_b);//根据Rank_b的值使ind序列升序排序
+    IntChr(TemChrom);
+    IndexSortByValueOnAscend(ind, Rank_b);
 
-    //将任务索引降序赋值给任务调度列表
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         TemChrom.TskSchLst[i] = ind[comConst.NumOfTsk - i - 1];
     }
-    GnrML_Evl_EFT_S(TemChrom);//生成chromosome并得到makespan
-    CalculateEnergy1(TemChrom);//计算EC
+    GnrML_Evl_EFT_S(TemChrom);
+    CalculateEnergy1(TemChrom);
     return TemChrom;
 }
 
@@ -269,7 +237,7 @@ chromosome GnrChr_DIHEFT_S(vector<double>& Rank_b) {
                 ReadyChildTaskSet.push_back(childId);
             }
         }
-        if (NeedProcessChildTask == -1) { //只需要处理当前任务
+        if (NeedProcessChildTask == -1) {
             SelectRsc_EFT_S(chrom, ITL, CrnTskId, FinalRscForCrnTask, FinalStartTimeOfCrnTask, FinalEndTimeOfCrnTask);
             chrom.StartTime[CrnTskId] = FinalStartTimeOfCrnTask;
             chrom.EndTime[CrnTskId] = FinalEndTimeOfCrnTask;
@@ -279,7 +247,7 @@ chromosome GnrChr_DIHEFT_S(vector<double>& Rank_b) {
             chrom.MakeSpan = XY_MAX(chrom.MakeSpan, chrom.EndTime[CrnTskId]);
             UpdateITL(ITL[FinalRscForCrnTask], FinalStartTimeOfCrnTask, FinalEndTimeOfCrnTask);
         }
-        else {  //需要和可以处理的子任务一起考虑分配资源
+        else {  
             int FinalRscForChildTask = -1;
             double FinalStartTimeOfChildTask = 0;
             double FinalEndTimeOfChildTask = InfiniteValue;
@@ -344,13 +312,13 @@ chromosome GnrChr_DIHEFT_S(vector<double>& Rank_b) {
             chrom.MakeSpan = XY_MAX(chrom.MakeSpan, chrom.EndTime[NeedProcessChildTask]);
             ITL = ITL_CrnTaskScheduled;
             UpdateITL(ITL[FinalRscForChildTask], FinalStartTimeOfChildTask, chrom.EndTime[NeedProcessChildTask]);
-            for (int TskId : ReadyChildTaskSet) { //把所有还没有处理的就绪子任务添加到RTI中；
+            for (int TskId : ReadyChildTaskSet) { 
                 if (TskId != NeedProcessChildTask) {
                     RTI.push_back(TskId);
                     AvrRtSet[TskId] = ClcAvrReadyTime_S(TskId, chrom);
                 }
             }
-            for (int childId : Tasks[NeedProcessChildTask].children) {//把就绪的子任务的子任务添加到RTI中；
+            for (int childId : Tasks[NeedProcessChildTask].children) {
                 upr[childId] = upr[childId] - 1;
                 if (upr[childId] == 0) {
                     RTI.push_back(childId);
@@ -532,15 +500,12 @@ chromosome GnrChr_Lvl_Ran() {
     }
     return chrom;
 }
-/*****************************************************
-Function:根据任务的排名值排序任务，并用排序后的任务列表初始化一个新的染色体对象
 
-*****************************************************/
 chromosome GnrChr_HMEC_S(vector<double> Rank_b) {
     vector<int> ind(comConst.NumOfTsk);
     chromosome TemChrom;
-    IntChr(TemChrom);//初始化
-    IndexSortByValueOnAscend(ind, Rank_b);//ind任务索引，ind就按排名值升序排列
+    IntChr(TemChrom);
+    IndexSortByValueOnAscend(ind, Rank_b);
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         TemChrom.TskSchLst[i] = ind[comConst.NumOfTsk - i - 1];
     }
@@ -549,32 +514,24 @@ chromosome GnrChr_HMEC_S(vector<double> Rank_b) {
 }
 
 
-/*****************************************************
-Function:根据任务的排名值排序任务，生成调度序列
-lyz20240730
-返回调度序列
-*****************************************************/
+
 chromosome GetTskSchLst(vector<double> Rank_b) {
     vector<int> ind(comConst.NumOfTsk);
     chromosome TemChrom;
-    IntChr(TemChrom);//初始化
-    IndexSortByValueOnAscend(ind, Rank_b);//ind任务索引，ind就按排名值升序排列
+    IntChr(TemChrom);
+    IndexSortByValueOnAscend(ind, Rank_b);
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         TemChrom.TskSchLst[i] = ind[comConst.NumOfTsk - i - 1];
     }
     return TemChrom;
 }
 
-/*****************************************************
-Function:根据任务的排名值排序任务，生成调度序列
-lyz20240730
-返回调度序列   只得到序列
-*****************************************************/
+
 vector<int> GetOriginSequence(vector<double> seq) {
     vector<int> ind(comConst.NumOfTsk);
     vector<int> TempSeq(comConst.NumOfTsk);
 
-    IndexSortByValueOnAscend(ind,seq);//ind任务索引，ind就按排名值升序排列
+    IndexSortByValueOnAscend(ind,seq);
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         TempSeq[i] = ind[comConst.NumOfTsk - i - 1];
     }
@@ -582,22 +539,14 @@ vector<int> GetOriginSequence(vector<double> seq) {
 }
 
 
-/*****************************************************
-Function:生成和评估染色体对象 => 计算适宜度（能耗）
-考虑负载平衡
-*****************************************************/
 
 double GnrML_Evl_MEC_S_New(chromosome& ch) {
 
-    //将所有任务到资源的映射设为-1
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         ch.RscAlcLst[i] = -1;
     }
-    //ch.HtUseTime[2] = ch.HtUseTime[0];//0809测试加
 
-    //初始化空闲时间片列表ITL
-    //对每个资源初始化其空闲时间片列表，初始化状态为[0.0,9999999999.0]
-    vector<set<double> > ITL;     //the idle time-slot lists  for all resources
+    vector<set<double> > ITL;    
     for (int j = 0; j < comConst.NumOfRsc; ++j) {
         set<double> a;
         a.insert(0.0); a.insert(9999999999 * 1.0);
@@ -607,41 +556,32 @@ double GnrML_Evl_MEC_S_New(chromosome& ch) {
     ch.MakeSpan = 0;
     ch.EnergyConsumption = 0;
 
-    //任务调度和资源分配
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        int RscIndex = -1;//记录最优资源的索引
-        int TaskIndex = ch.TskSchLst[i];//当前任务在任务调度列表中的索引
-        double FinalEC = 9999999999, FinalEndTime = 9999999999, FinalStartTime = 0;//记录最优能量消耗即对应开始结束时间
+        int RscIndex = -1;
+        int TaskIndex = ch.TskSchLst[i];
+        double FinalEC = 9999999999, FinalEndTime = 9999999999, FinalStartTime = 0;
         for (int v : Tasks[TaskIndex].ElgRsc) {
             double ReadyTime = 0;
-            double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;//外部输入数据大小
+            double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;
 
-            //遍历当前任务的所有父任务，计算从父任务传输过来的数据大小，并更新ReadyTime
             for (int ParentIndex : Tasks[TaskIndex].parents) {
                 int ParentRscIndex = ch.RscAlcLst[ParentIndex];
 
-                //如果节点与父节点不在同一服务器，传输数据大小加上父代节点传输数据
                 if (v != ParentRscIndex) {
                     TransferDataSize += ParChildTranFileSizeSum[ParentIndex][TaskIndex];
                 }
 
-                //判断，使得ReadyTime为所有父任务的结束时间的最大值
                 if (ReadyTime + PrecisionValue < ch.EndTime[ParentIndex]) {
                     ReadyTime = ch.EndTime[ParentIndex];
                 }
             }
 
-            //计算执行时间 = 任务长度 / 数据处理能力 + （传输数据 + 输出数据）/  value * 8 / 带宽
             double ExeTime = Tasks[TaskIndex].length / Rscs[v].pc + (TransferDataSize + Tasks[TaskIndex].OFileSizeSum) / VALUE * 8 / Rscs[v].bw;
-            ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);//寻找可执行的时间空隙
-            ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;//结束时间 = 开始时间 + 执行时间
-            ch.RscAlcLst[TaskIndex] = v;//任务分配
-            double CurEC = CalculateECByDelta2(ch, i);//计算当前的EC
-            //            double CurEC1 = CalculateECByDelta1(ch,i);
-            //            if (fabs(CurEC - CurEC1) > 1e-4 )  cout << "EC: " << CurEC << "; EC1: "<< CurEC1 << endl;
-                        //{find/record the min EC}
+            ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);
+            ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;
+            ch.RscAlcLst[TaskIndex] = v;
+            double CurEC = CalculateECByDelta2(ch, i);
 
-                        //判断是否有最优
             if (CurEC + PrecisionValue < FinalEC) {
                 FinalStartTime = ch.StartTime[TaskIndex];
                 FinalEndTime = ch.EndTime[TaskIndex];
@@ -650,7 +590,6 @@ double GnrML_Evl_MEC_S_New(chromosome& ch) {
             }
         }
 
-        //更新染色体信息
         ch.EnergyConsumption = FinalEC;
         ch.StartTime[TaskIndex] = FinalStartTime;
         ch.EndTime[TaskIndex] = FinalEndTime;
@@ -659,7 +598,7 @@ double GnrML_Evl_MEC_S_New(chromosome& ch) {
         ch.HtUseTime[Rscs[RscIndex].Hostid].second = XY_MAX(ch.HtUseTime[Rscs[RscIndex].Hostid].second, ch.EndTime[TaskIndex]);
         ch.MakeSpan = XY_MAX(ch.MakeSpan, FinalEndTime);
         UpdateITL(ITL[RscIndex], FinalStartTime, FinalEndTime);
-        //cout << endl;
+
     }
 
     return ch.EnergyConsumption;
@@ -667,22 +606,14 @@ double GnrML_Evl_MEC_S_New(chromosome& ch) {
 
 
 
-/*****************************************************
-Function:生成和评估染色体对象 => 计算适宜度（能耗）
-
-*****************************************************/
 
 double GnrML_Evl_MEC_S(chromosome& ch) {
 
-    //将所有任务到资源的映射设为-1
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         ch.RscAlcLst[i] = -1;
     }   
-    //ch.HtUseTime[2] = ch.HtUseTime[0];//0809测试加
 
-    //初始化空闲时间片列表ITL
-    //对每个资源初始化其空闲时间片列表，初始化状态为[0.0,9999999999.0]
-    vector<set<double> > ITL;     //the idle time-slot lists  for all resources
+    vector<set<double> > ITL;    
     for (int j = 0; j < comConst.NumOfRsc; ++j) {
         set<double> a;
         a.insert(0.0); a.insert(9999999999 * 1.0);
@@ -692,41 +623,33 @@ double GnrML_Evl_MEC_S(chromosome& ch) {
     ch.MakeSpan = 0;
     ch.EnergyConsumption = 0;
 
-    //任务调度和资源分配
+
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        int RscIndex = -1;//记录最优资源的索引
-        int TaskIndex = ch.TskSchLst[i];//当前任务在任务调度列表中的索引
-        double FinalEC = 9999999999, FinalEndTime = 9999999999, FinalStartTime = 0;//记录最优能量消耗即对应开始结束时间
+        int RscIndex = -1;
+        int TaskIndex = ch.TskSchLst[i];
+        double FinalEC = 9999999999, FinalEndTime = 9999999999, FinalStartTime = 0;
         for (int v : Tasks[TaskIndex].ElgRsc) {
             double ReadyTime = 0;
-            double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;//外部输入数据大小
+            double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;
 
-            //遍历当前任务的所有父任务，计算从父任务传输过来的数据大小，并更新ReadyTime
             for (int ParentIndex : Tasks[TaskIndex].parents) {
                 int ParentRscIndex = ch.RscAlcLst[ParentIndex];
 
-                //如果节点与父节点不在同一服务器，传输数据大小加上父代节点传输数据
                 if (v != ParentRscIndex) {
                     TransferDataSize += ParChildTranFileSizeSum[ParentIndex][TaskIndex];
                 }
 
-                //判断，使得ReadyTime为所有父任务的结束时间的最大值
                 if (ReadyTime + PrecisionValue < ch.EndTime[ParentIndex]) {
                     ReadyTime = ch.EndTime[ParentIndex];
                 }
             }
 
-            //计算执行时间 = 任务长度 / 数据处理能力 + （传输数据 + 输出数据）/  value * 8 / 带宽
             double ExeTime = Tasks[TaskIndex].length / Rscs[v].pc + (TransferDataSize + Tasks[TaskIndex].OFileSizeSum) / VALUE * 8 / Rscs[v].bw;
-            ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);//寻找可执行的时间空隙
-            ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;//结束时间 = 开始时间 + 执行时间
-            ch.RscAlcLst[TaskIndex] = v;//任务分配
-            double CurEC = CalculateECByDelta2(ch, i);//计算当前的EC
-            //double CurEC = CalculateECByDelta1(ch,i);
-//            if (fabs(CurEC - CurEC1) > 1e-4 )  cout << "EC: " << CurEC << "; EC1: "<< CurEC1 << endl;
-            //{find/record the min EC}
+            ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);
+            ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;
+            ch.RscAlcLst[TaskIndex] = v;
+            double CurEC = CalculateECByDelta2(ch, i);
 
-            //判断是否有最优
             if (CurEC + PrecisionValue < FinalEC) {
                 FinalStartTime = ch.StartTime[TaskIndex];
                 FinalEndTime = ch.EndTime[TaskIndex];
@@ -735,7 +658,6 @@ double GnrML_Evl_MEC_S(chromosome& ch) {
             }
         }
 
-        //更新染色体信息
         ch.EnergyConsumption = FinalEC;
         ch.StartTime[TaskIndex] = FinalStartTime;
         ch.EndTime[TaskIndex] = FinalEndTime;
@@ -744,7 +666,7 @@ double GnrML_Evl_MEC_S(chromosome& ch) {
         ch.HtUseTime[Rscs[RscIndex].Hostid].second = XY_MAX(ch.HtUseTime[Rscs[RscIndex].Hostid].second, ch.EndTime[TaskIndex]);
         ch.MakeSpan = XY_MAX(ch.MakeSpan, FinalEndTime);
         UpdateITL(ITL[RscIndex], FinalStartTime, FinalEndTime);
-        //cout << endl;
+
     }
 
     return ch.EnergyConsumption;
@@ -753,22 +675,14 @@ double GnrML_Evl_MEC_S(chromosome& ch) {
 
 
 
-/*****************************************************
-Function:生成和评估染色体对象 => 计算适宜度（能耗）
-
-*****************************************************/
 
 double GnrML_Evl_MEC_S_QPHH(chromosome& ch) {
 
-    //将所有任务到资源的映射设为-1
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         ch.RscAlcLst[i] = -1;
     }
-    //ch.HtUseTime[2] = ch.HtUseTime[0];//0809测试加
 
-    //初始化空闲时间片列表ITL
-    //对每个资源初始化其空闲时间片列表，初始化状态为[0.0,9999999999.0]
-    vector<set<double> > ITL;     //the idle time-slot lists  for all resources
+    vector<set<double> > ITL;    
     for (int j = 0; j < comConst.NumOfRsc; ++j) {
         set<double> a;
         a.insert(0.0); a.insert(9999999999 * 1.0);
@@ -778,46 +692,35 @@ double GnrML_Evl_MEC_S_QPHH(chromosome& ch) {
     ch.MakeSpan = 0;
     ch.EnergyConsumption = 0;
     double theta = 1.0;
-    //任务调度和资源分配
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        int RscIndex = -1;//记录最优资源的索引
-        int TaskIndex = ch.TskSchLst[i];//当前任务在任务调度列表中的索引
-        double FinalEC = 9999999999, FinalEndTime = 9999999999, FinalStartTime = 0;//记录最优能量消耗即对应开始结束时间
-       
-        //按照一定概率 theta 
-        // < theta 全部搜索一遍
-        // >= theta 按照经验进行选择VM，启发式
-       
+        int RscIndex = -1;
+        int TaskIndex = ch.TskSchLst[i];
+        double FinalEC = 9999999999, FinalEndTime = 9999999999, FinalStartTime = 0;
+
         double SelectTheta = ((double)rand() / (RAND_MAX)) / 1.0;
         if (SelectTheta <= theta){
-            for (int v : Tasks[TaskIndex].ElgRsc) { // 20240924原本从所有可用资源中找
+            for (int v : Tasks[TaskIndex].ElgRsc) {
                 double ReadyTime = 0;
-                double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;//外部输入数据大小
+                double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;
 
-                //遍历当前任务的所有父任务，计算从父任务传输过来的数据大小，并更新ReadyTime
                 for (int ParentIndex : Tasks[TaskIndex].parents) {
                     int ParentRscIndex = ch.RscAlcLst[ParentIndex];
 
-                    //如果节点与父节点不在同一服务器，传输数据大小加上父代节点传输数据
                     if (v != ParentRscIndex) {
                         TransferDataSize += ParChildTranFileSizeSum[ParentIndex][TaskIndex];
                     }
 
-                    //判断，使得ReadyTime为所有父任务的结束时间的最大值
                     if (ReadyTime + PrecisionValue < ch.EndTime[ParentIndex]) {
                         ReadyTime = ch.EndTime[ParentIndex];
                     }
                 }
 
-                //计算执行时间 = 任务长度 / 数据处理能力 + （传输数据 + 输出数据）/  value * 8 / 带宽
                 double ExeTime = Tasks[TaskIndex].length / Rscs[v].pc + (TransferDataSize + Tasks[TaskIndex].OFileSizeSum) / VALUE * 8 / Rscs[v].bw;
-                ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);//寻找可执行的时间空隙
-                ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;//结束时间 = 开始时间 + 执行时间
-                ch.RscAlcLst[TaskIndex] = v;//任务分配
-                //double CurEC = CalculateECByDelta2_QPHH(ch, i);//计算当前的EC
-                double CurEC = CalculateECByDelta2(ch, i);//计算当前的EC
+                ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);
+                ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;
+                ch.RscAlcLst[TaskIndex] = v;
+                double CurEC = CalculateECByDelta2(ch, i);
 
-                //判断是否有最优
                 if (CurEC + PrecisionValue < FinalEC) {
                     FinalStartTime = ch.StartTime[TaskIndex];
                     FinalEndTime = ch.EndTime[TaskIndex];
@@ -828,36 +731,28 @@ double GnrML_Evl_MEC_S_QPHH(chromosome& ch) {
             RscUseNum[RscIndex]++;
         }
         else {
-            //启发式方法
-            for (int v : Tasks[TaskIndex].ElgRsc) { // 20240924原本从所有可用资源中找
+            for (int v : Tasks[TaskIndex].ElgRsc) { 
                 if (RscUseNum[v] != 0) {
                     double ReadyTime = 0;
-                    double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;//外部输入数据大小
+                    double TransferDataSize = Tasks[TaskIndex].ExternalInputFileSizeSum;
 
-                    //遍历当前任务的所有父任务，计算从父任务传输过来的数据大小，并更新ReadyTime
                     for (int ParentIndex : Tasks[TaskIndex].parents) {
                         int ParentRscIndex = ch.RscAlcLst[ParentIndex];
 
-                        //如果节点与父节点不在同一服务器，传输数据大小加上父代节点传输数据
                         if (v != ParentRscIndex) {
                             TransferDataSize += ParChildTranFileSizeSum[ParentIndex][TaskIndex];
                         }
-
-                        //判断，使得ReadyTime为所有父任务的结束时间的最大值
                         if (ReadyTime + PrecisionValue < ch.EndTime[ParentIndex]) {
                             ReadyTime = ch.EndTime[ParentIndex];
                         }
                     }
 
-                    //计算执行时间 = 任务长度 / 数据处理能力 + （传输数据 + 输出数据）/  value * 8 / 带宽
                     double ExeTime = Tasks[TaskIndex].length / Rscs[v].pc + (TransferDataSize + Tasks[TaskIndex].OFileSizeSum) / VALUE * 8 / Rscs[v].bw;
-                    ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);//寻找可执行的时间空隙
-                    ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;//结束时间 = 开始时间 + 执行时间
-                    ch.RscAlcLst[TaskIndex] = v;//任务分配
-                    //double CurEC = CalculateECByDelta2_QPHH(ch, i);//计算当前的EC
-                    double CurEC = CalculateECByDelta2(ch, i);//计算当前的EC
+                    ch.StartTime[TaskIndex] = FindIdleTimeSlot(ITL[v], ExeTime, ReadyTime);
+                    ch.EndTime[TaskIndex] = ch.StartTime[TaskIndex] + ExeTime;
+                    ch.RscAlcLst[TaskIndex] = v;
+                    double CurEC = CalculateECByDelta2(ch, i);
 
-                    //判断是否有最优
                     if (CurEC + PrecisionValue < FinalEC) {
                         FinalStartTime = ch.StartTime[TaskIndex];
                         FinalEndTime = ch.EndTime[TaskIndex];
@@ -869,9 +764,7 @@ double GnrML_Evl_MEC_S_QPHH(chromosome& ch) {
             }
             RscUseNum[RscIndex]++;
         }
-        
 
-        //更新染色体信息
         ch.EnergyConsumption = FinalEC;
         ch.StartTime[TaskIndex] = FinalStartTime;
         ch.EndTime[TaskIndex] = FinalEndTime;
@@ -880,14 +773,14 @@ double GnrML_Evl_MEC_S_QPHH(chromosome& ch) {
         ch.HtUseTime[Rscs[RscIndex].Hostid].second = XY_MAX(ch.HtUseTime[Rscs[RscIndex].Hostid].second, ch.EndTime[TaskIndex]);
         ch.MakeSpan = XY_MAX(ch.MakeSpan, FinalEndTime);
         UpdateITL(ITL[RscIndex], FinalStartTime, FinalEndTime);
-        //cout << endl;
+
         theta = theta * 0.95;
     }
     
     return ch.EnergyConsumption;
 }
 
-// I/O independent
+
 double DcdEvl_S(chromosome& ch) {
     for (int k = 0; k < HstSet.size(); ++k) {
         ch.HtUseTime[k] = { 9999999999,-1 };
@@ -978,12 +871,12 @@ double NrmDcd_S(chromosome& ch) {
         for (list<int>::iterator lit = RTI.begin(); lit != RTI.end(); ++lit) {
             int decimal = ch.Code_RK[*lit] - floor(ch.Code_RK[*lit]);
             if (decimal < tmp) {
-                tmp = decimal; pit = lit; //小数部分最小的那个优先调度
+                tmp = decimal; pit = lit; 
             }
         }
         ch.TskSchLst[i] = *pit;
         RTI.erase(pit);
-        //更新RTI;
+
         if (ch.IsFrw)
             for (int childId : Tasks[ch.TskSchLst[i]].children) {
                 upr[childId] = upr[childId] - 1;
@@ -1058,12 +951,12 @@ void GnrRscAlcTskSchLstFromCode_RK(chromosome& chrom) {
         for (list<int>::iterator lit = RTI.begin(); lit != RTI.end(); ++lit) {
             int decimal = chrom.Code_RK[*lit] - floor(chrom.Code_RK[*lit]);
             if (decimal + PrecisionValue < tmp) {
-                tmp = decimal; pit = lit; //小数部分最小的那个优先调度
+                tmp = decimal; pit = lit; 
             }
         }
         chrom.TskSchLst[i] = *pit;
         RTI.erase(pit);
-        //更新RTI;
+        //鏇存柊RTI;
         for (int childId : Tasks[chrom.TskSchLst[i]].children) {
             upr[childId] = upr[childId] - 1;
             if (upr[childId] == 0)   RTI.push_back(childId);
@@ -1126,21 +1019,12 @@ void UpdateITL(set<double>& ITLofRscId, double& StartTime, double& EndTime) {
     }
 }
 
-/*****************************************************
-Function:根据最早完成时间 (Earliest Finish Time, EFT) 策略
-生成和评估一个染色体 (chromosome)，
-
-评估任务调度方案的 Makespan（完成所有任务的总时间）
-
-*****************************************************/
 
 double GnrML_Evl_EFT_S(chromosome& ch) {
 
-    //// 初始化任务到资源的分配列表，将所有任务的资源分配设置为 -1
     for (int i = 0; i < comConst.NumOfTsk; ++i)
         ch.RscAlcLst[i] = -1;
 
-    // 初始化每个资源的空闲时间段列表，初始状态下资源在时间 0 和极大时间之间是空闲的
     vector<set<double> > ITL;                           //the idle time-slot lists  for all resources
     double makespan = 0;
     for (int j = 0; j < comConst.NumOfRsc; ++j) {
@@ -1149,33 +1033,24 @@ double GnrML_Evl_EFT_S(chromosome& ch) {
         ITL.push_back(a);
     }
 
-    // 遍历任务调度列表中的每个任务
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         int RscId = -1, TaskId = ch.TskSchLst[i];
         double FinalEndTime = 9999999999, FinalStartTime = 0;
 
-        //拿着当前任务去找资源
-
-        // 选择可以最早完成该任务的【资源】，并返回该资源的ID，任务开始时间和结束时间   
         SelectRsc_EFT_S(ch, ITL, TaskId, RscId, FinalStartTime, FinalEndTime);  //Find the resource that can finish the task earliest
         
-        // 更新任务的开始和结束时间，以及任务分配的资源
         ch.EndTime[TaskId] = FinalEndTime;
         ch.StartTime[TaskId] = FinalStartTime;
         ch.RscAlcLst[TaskId] = RscId;
 
-        // 更新资源的使用时间段  开始时间取最早开始，结束时间取最晚结束
         ch.HtUseTime[Rscs[RscId].Hostid].first = XY_MIN(ch.HtUseTime[Rscs[RscId].Hostid].first, ch.StartTime[TaskId]);
         ch.HtUseTime[Rscs[RscId].Hostid].second = XY_MAX(ch.HtUseTime[Rscs[RscId].Hostid].second, ch.EndTime[TaskId]);
         
-        // 更新资源的空闲时间段列表
         UpdateITL(ITL[RscId], FinalStartTime, FinalEndTime);              //update ITL
         
-        // 更新当前的Makespan
         makespan = XY_MAX(makespan, FinalEndTime);
     }
 
-    // 设置染色体的Makespan
     ch.MakeSpan = makespan;
     return makespan;
 }
@@ -1205,7 +1080,7 @@ double HrsDcd_EFT_S(chromosome& ch) {
         for (list<int>::iterator lit = RTI.begin(); lit != RTI.end(); ++lit) {
             double decimal = ch.Code_RK[*lit] - floor(ch.Code_RK[*lit]);
             if (decimal < tmp) {
-                tmp = decimal; pit = lit; //小数部分最小的那个优先调度
+                tmp = decimal; pit = lit; 
             }
         }
         ch.TskSchLst[i] = *pit;
@@ -1233,7 +1108,7 @@ double HrsDcd_EFT_S(chromosome& ch) {
 void SelectRsc_EFT_S(chromosome& ch, vector<set<double>>& ITL, int& TaskIndex, int& RscIndex, double& FinalStartTime, double& FinalEndTime) {
     for (int RscIdOfCrnTsk : Tasks[TaskIndex].ElgRsc) {
         double ReadyTime = 0;
-        double TransferData = Tasks[TaskIndex].ExternalInputFileSizeSum;//外部输入
+        double TransferData = Tasks[TaskIndex].ExternalInputFileSizeSum;
         for (int ParentIndex : Tasks[TaskIndex].parents) { //calculate the ready time and transfer data of the task
             int RscIdOfPrnTsk = ch.RscAlcLst[ParentIndex];
             if (RscIdOfCrnTsk != RscIdOfPrnTsk) {
@@ -1307,116 +1182,57 @@ vector<int> GnrSS_Lvl() {
     return ch;
 }
 
-/*****************************************************
-Function:初始化资源分配概率模型（ProModelOfResAlc，简称 PMR）
-它为每个任务在其所有可用资源上的初始分配概率设置为相等值。
-
-*****************************************************/
 void InitProModelOfResAlc(vector<vector<double> >& PMR) {
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        //遍历任务可用资源
         for (int j : Tasks[i].ElgRsc) {
-            //任务i在资源j上的分配概率为：1 / 该任务可用资源数量
-            //这样确保每个任务在可能资源上的初始分配概率相同
             PMR[i][j] = 1.0 / Tasks[i].ElgRsc.size();
         }
     }
 }
 
 
-/*****************************************************
-Function:初始化任务调度概率模型（ProModelOfTskSch，简称 PMS）
-它根据任务的祖先数和非后代数为每个任务在调度列表中对应位置的概率进行初始化
-
-*****************************************************/
 void InitProModelOfTskSch(vector<vector<double>>& PMS, vector<int>& NumOfAncestors, vector<int>& NumOfNonDescendants) {
-    vector<int> STS(comConst.NumOfTsk, 0);//STS[k] 用于记录每个位置 k 上的任务数量。
-
+    vector<int> STS(comConst.NumOfTsk, 0);
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         for (int k = NumOfAncestors[i]; k < NumOfNonDescendants[i]; ++k) {
-            PMS[i][k] = 1;//任务i在位置k上的初始概率为1
-            ++STS[k];//位置k上任务数量++
+            PMS[i][k] = 1;
+            ++STS[k];
         }
     }//PMS[i][k] represents the probability that the k-th scheduled task is task i
 
-    //归一化PMS向量  概率等于第k个位置可处理任务数量分之一
     for (int k = 0; k < comConst.NumOfTsk; ++k) {
         for (int i = 0; i < comConst.NumOfTsk; ++i) {
-            PMS[i][k] = PMS[i][k] / STS[k];//对每个位置上的概率进行归一化，确保每个位置概率之和为1
+            PMS[i][k] = PMS[i][k] / STS[k];
         }
     }
 }
 
-//chromosome GnrTskLstOfChr(vector<vector<double> >& PMS) {
-//    chromosome chrom;
-//    IntChr(chrom);
-//    vector<int > upr(comConst.NumOfTsk,0);
-//    list<int> RTI;
-//    for (int i = 0; i < comConst.NumOfTsk; ++i) {
-//        upr[i]=Tasks[i].parents.size();
-//        if (upr[i]==0)  RTI.push_back(i);
-//    }
-//    for (int i = 0; i < comConst.NumOfTsk; i++) {
-//        double sum = 0;
-//        for(int k : RTI){
-//            sum += PMS[k][i];
-//        }
-//        vector<double> SltProb(comConst.NumOfTsk);
-//        for (int k : RTI) {
-//            SltProb[k] = PMS[k][i] / sum;
-//        }
-//        double rnd = double(rand()%100) / 100;
-//        double ProbSum = 0;
-//        int taskIndex;
-//        for (int k : RTI) {
-//            ProbSum += SltProb[k];
-//            if (rnd + PrecisionValue < ProbSum) {
-//                taskIndex = k;
-//                break;
-//            }
-//        }
-//        chrom.TskSchLst[i] = taskIndex;
-//        RTI.erase(find(RTI.begin(), RTI.end(), taskIndex));
-//        for (int k = 0; k < Tasks[taskIndex].children.size(); ++k) {
-//            upr[Tasks[taskIndex].children[k]]--;
-//            if (upr[Tasks[taskIndex].children[k]] == 0){
-//                RTI.push_back(Tasks[taskIndex].children[k]);
-//            }
-//        }
-//    }
-//    return chrom;
-//}
-
 chromosome GnrTskLstOfChr(vector<vector<double> >& PMS, vector<double>& eta_TSO) {
     chromosome chrom;
-    IntChr(chrom);// 初始化染色体
-    vector<int > upr(comConst.NumOfTsk, 0);// 用于存储每个任务的父任务数量
-    list<int> RTI;// 就绪任务列表，存储当前可调度的任务
+    IntChr(chrom);
+    vector<int > upr(comConst.NumOfTsk, 0);
+    list<int> RTI;
 
-    // 初始化 upr 和 RTI
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        upr[i] = Tasks[i].parents.size();// 获取每个任务的父任务数量
-        if (upr[i] == 0)  RTI.push_back(i);// 没有父任务的任务加入就绪任务列表
+        upr[i] = Tasks[i].parents.size();
+        if (upr[i] == 0)  RTI.push_back(i);
     }
 
 
     for (int i = 0; i < comConst.NumOfTsk; i++) {
         double sum = 0;
 
-        // 计算当前调度位置 i 的任务调度概率总和
         for (int k : RTI) {
             sum += PMS[k][i] * eta_TSO[k];
         }
 
-        vector<double> SltProb(comConst.NumOfTsk);// 用于存储选择概率
+        vector<double> SltProb(comConst.NumOfTsk);
 
-        // 计算每个就绪任务的选择概率
         for (int k : RTI) {
             SltProb[k] = PMS[k][i] * eta_TSO[k] / sum;
         }
         double ProbSum = 0;
-        double rnd = double(rand() % 100) / 100;// 生成一个 0 到 1 之间的随机数
-        // 根据选择概率选择一个任务进行调度
+        double rnd = double(rand() % 100) / 100;
         for (int k : RTI) {
             ProbSum += SltProb[k];
             if (rnd + PrecisionValue < ProbSum) {
@@ -1425,9 +1241,8 @@ chromosome GnrTskLstOfChr(vector<vector<double> >& PMS, vector<double>& eta_TSO)
             }
         }
 
-        RTI.erase(find(RTI.begin(), RTI.end(), chrom.TskSchLst[i]));// 从就绪任务列表中移除已调度的任务
+        RTI.erase(find(RTI.begin(), RTI.end(), chrom.TskSchLst[i]));
 
-        // 更新后续任务的父任务数量，并将父任务数量为 0 的任务加入就绪任务列表
         for (int k = 0; k < Tasks[chrom.TskSchLst[i]].children.size(); ++k) {
             upr[Tasks[chrom.TskSchLst[i]].children[k]]--;
             if (upr[Tasks[chrom.TskSchLst[i]].children[k]] == 0) {
@@ -1538,17 +1353,17 @@ void RepairPriorityAndGnrSchOrd(chromosome& chrom) {
 void RepairMapAndGnrRscAlcLst(chromosome& ch) {
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         int RscId = round(ch.RscAlcPart[i]);
-        if (RscId < Tasks[i].ElgRsc[0]) { //超出下限的处理
+        if (RscId < Tasks[i].ElgRsc[0]) { 
             ch.RscAlcPart[i] = Tasks[i].ElgRsc[0];
             ch.RscAlcLst[i] = Tasks[i].ElgRsc[0];
             continue;
         }
-        if (RscId > Tasks[i].ElgRsc[Tasks[i].ElgRsc.size() - 1]) { //超出上限的处理
+        if (RscId > Tasks[i].ElgRsc[Tasks[i].ElgRsc.size() - 1]) { 
             ch.RscAlcPart[i] = Tasks[i].ElgRsc[Tasks[i].ElgRsc.size() - 1];
             ch.RscAlcLst[i] = Tasks[i].ElgRsc[Tasks[i].ElgRsc.size() - 1];
             continue;
         }
-        if (find(Tasks[i].ElgRsc.begin(), Tasks[i].ElgRsc.end(), RscId) == Tasks[i].ElgRsc.end()) { //不存在的处理
+        if (find(Tasks[i].ElgRsc.begin(), Tasks[i].ElgRsc.end(), RscId) == Tasks[i].ElgRsc.end()) {
             if (Tasks[i].ElgRsc.size() == 1) {
                 ch.RscAlcPart[i] = Tasks[i].ElgRsc[0];
                 ch.RscAlcLst[i] = Tasks[i].ElgRsc[0];
@@ -1610,10 +1425,10 @@ double IFBD_S(chromosome& ch) {
         DcdEvl_S(NewChrom);
         CalculateEnergy1(NewChrom);
     } while (NewChrom.EnergyConsumption + PrecisionValue < OldChrom.EnergyConsumption);
-    if (fabs(NewChrom.EnergyConsumption - OldChrom.EnergyConsumption) < PrecisionValue && NewChrom.IsFrw) { //相等取正向个体
+    if (fabs(NewChrom.EnergyConsumption - OldChrom.EnergyConsumption) < PrecisionValue && NewChrom.IsFrw) { 
         ch = NewChrom;
     }
-    else { //不相等取小的
+    else { 
         ch = OldChrom;
     }
     return ch.EnergyConsumption;
@@ -1798,7 +1613,7 @@ double CalculateEnergy2(chromosome& Chrom) {
     return Chrom.EnergyConsumption;
 }
 
-//计算EC
+//璁＄畻EC
 double CalculateEnergy1(chromosome& Chrom) {
     Chrom.EnergyConsumption = 0;
     vector<vector<int>> tskStOfHst(HstSet.size());
@@ -1831,7 +1646,7 @@ double CalculateEnergy1(chromosome& Chrom) {
 
 double CalculateECByDelta2(chromosome& ch, int& Number) {
     double DeltaEC = 0;
-    vector<int>STn;  //存储与当前任务同时在同一主机上执行的任务
+    vector<int>STn; 
     int CurTask = ch.TskSchLst[Number];
     int CurHT = Rscs[ch.RscAlcLst[CurTask]].Hostid;
     for (int i = 0; i < Number; ++i) {
@@ -1840,7 +1655,7 @@ double CalculateECByDelta2(chromosome& ch, int& Number) {
         int taskHT = Rscs[RscId].Hostid;
         if ((ch.EndTime[taskId] > ch.StartTime[CurTask] + PrecisionValue && ch.EndTime[taskId] - PrecisionValue < ch.EndTime[CurTask] && taskHT == CurHT) ||
             (ch.StartTime[taskId] > ch.StartTime[CurTask] - PrecisionValue && ch.StartTime[taskId] + PrecisionValue < ch.EndTime[CurTask] && taskHT == CurHT) ||
-            (ch.StartTime[taskId] + PrecisionValue < ch.StartTime[CurTask] && ch.EndTime[taskId] > ch.EndTime[CurTask] + PrecisionValue && taskHT == CurHT)) { //加精度控制-xy-已改-qmq
+            (ch.StartTime[taskId] + PrecisionValue < ch.StartTime[CurTask] && ch.EndTime[taskId] > ch.EndTime[CurTask] + PrecisionValue && taskHT == CurHT)) {
             STn.push_back(taskId);
         }
     }
@@ -1857,13 +1672,12 @@ double CalculateECByDelta2(chromosome& ch, int& Number) {
     }
     set<double>::iterator it = AllTime.begin(), endIt = AllTime.end();
     --endIt;
-    // 遍历时间点集合，计算各时间段内的能耗变化
+
     for (; it != endIt; ++it) {
         set<double>::iterator nxtIt = it;
-        ++nxtIt;// 获取下一个时间点
-        if (fabs(*nxtIt - *it) < 1e-6)  continue; // 如果时间差过小则跳过
-        double HstLd = 0;// 初始化主机负载
-        // 计算在当前时间段内的任务负载  累加上该VM上的其他任务
+        ++nxtIt;
+        if (fabs(*nxtIt - *it) < 1e-6)  continue;
+        double HstLd = 0;
         for (int i = 0; i < STn.size(); ++i) {
             int taskId = STn[i];
             int RscId = ch.RscAlcLst[taskId];
@@ -1872,7 +1686,7 @@ double CalculateECByDelta2(chromosome& ch, int& Number) {
                 HstLd += TemLd;
             }
         }
-        double CurLd = HstLd + Rscs[ch.RscAlcLst[CurTask]].pc / HstSet[CurHT].pc;//负载：根据负载得到功耗值
+        double CurLd = HstLd + Rscs[ch.RscAlcLst[CurTask]].pc / HstSet[CurHT].pc;
         if (CurLd > 1)
             cout << endl;
         //cout << " CurLd :" << CurLd << endl;
@@ -1894,84 +1708,10 @@ double CalculateECByDelta2(chromosome& ch, int& Number) {
     return ch.EnergyConsumption + DeltaEC;
 }
 
-// 优化后的能耗计算函数
-//double CalculateECByDelta2_QPHH(chromosome& ch, int& Number) {
-//    double DeltaEC = 0;
-//    vector<int> STn;  // 存储与当前任务同时在同一主机上执行的任务
-//    int CurTask = ch.TskSchLst[Number];
-//    int CurHT = Rscs[ch.RscAlcLst[CurTask]].Hostid;
-//
-//    // 预先遍历一次，收集与当前任务同时执行的任务
-//    for (int i = 0; i < Number; ++i) {
-//        int taskId = ch.TskSchLst[i];
-//        int RscId = ch.RscAlcLst[taskId];
-//        int taskHT = Rscs[RscId].Hostid;
-//
-//        // 判断任务是否在同一主机且时间重叠
-//        if ((ch.EndTime[taskId] > ch.StartTime[CurTask] + PrecisionValue && ch.EndTime[taskId] - PrecisionValue < ch.EndTime[CurTask] && taskHT == CurHT) ||
-//            (ch.StartTime[taskId] > ch.StartTime[CurTask] - PrecisionValue && ch.StartTime[taskId] + PrecisionValue < ch.EndTime[CurTask] && taskHT == CurHT) ||
-//            (ch.StartTime[taskId] + PrecisionValue < ch.StartTime[CurTask] && ch.EndTime[taskId] > ch.EndTime[CurTask] + PrecisionValue && taskHT == CurHT)) {
-//            STn.push_back(taskId);
-//        }
-//    }
-//
-//    // 使用一个向量替代 set，用于存储时间点，避免不必要的插入操作
-//    vector<double> AllTime;
-//    AllTime.push_back(ch.StartTime[CurTask]);
-//    AllTime.push_back(ch.EndTime[CurTask]);
-//
-//    for (int i = 0; i < STn.size(); ++i) {
-//        if (ch.StartTime[STn[i]] > ch.StartTime[CurTask] + PrecisionValue) {
-//            AllTime.push_back(ch.StartTime[STn[i]]);
-//        }
-//        if (ch.EndTime[STn[i]] + PrecisionValue < ch.EndTime[CurTask]) {
-//            AllTime.push_back(ch.EndTime[STn[i]]);
-//        }
-//    }
-//
-//    // 排序时间点，去重并遍历
-//    sort(AllTime.begin(), AllTime.end());
-//    AllTime.erase(unique(AllTime.begin(), AllTime.end()), AllTime.end());
-//
-//    // 遍历时间点集合，计算各时间段内的能耗变化
-//    for (size_t i = 0; i < AllTime.size() - 1; ++i) {
-//        double startTime = AllTime[i];
-//        double endTime = AllTime[i + 1];
-//        if (fabs(endTime - startTime) < 1e-6) continue; // 跳过时间差过小的情况
-//
-//        double HstLd = 0;  // 初始化主机负载
-//        // 计算在当前时间段内的任务负载
-//        for (int taskId : STn) {
-//            int RscId = ch.RscAlcLst[taskId];
-//            if (ch.StartTime[taskId] - PrecisionValue < startTime && endTime - PrecisionValue < ch.EndTime[taskId]) {
-//                double TemLd = Rscs[RscId].pc / HstSet[CurHT].pc;
-//                HstLd += TemLd;
-//            }
-//        }
-//        double CurLd = HstLd + Rscs[ch.RscAlcLst[CurTask]].pc / HstSet[CurHT].pc;  // 当前负载
-//        double TemEc = (endTime - startTime) * (CalculatePowerByLoad(CurLd, CurHT) - CalculatePowerByLoad(HstLd, CurHT));
-//        DeltaEC += TemEc;
-//    }
-//
-//    if (ch.HtUseTime[CurHT].second < -PrecisionValue) { // 主机首次使用
-//        DeltaEC += (ch.EndTime[CurTask] - ch.StartTime[CurTask]) * CalculatePowerByLoad(0, CurHT);
-//    }
-//    else {
-//        if (ch.StartTime[CurTask] < ch.HtUseTime[CurHT].first - PrecisionValue) {
-//            DeltaEC += (ch.HtUseTime[CurHT].first - ch.StartTime[CurTask]) * CalculatePowerByLoad(0, CurHT);
-//        }
-//        if (ch.EndTime[CurTask] > ch.HtUseTime[CurHT].second + PrecisionValue) {
-//            DeltaEC += (ch.EndTime[CurTask] - ch.HtUseTime[CurHT].second) * CalculatePowerByLoad(0, CurHT);
-//        }
-//    }
-//
-//    return ch.EnergyConsumption + DeltaEC;
-//}
 
 
 double CalculateECByDelta1(chromosome& ch, int& Number) {
     set<double> AllTime;
-    //    vector<double> T;
     vector<int> STn;
     int CurTask = ch.TskSchLst[Number];
     int CurHT = Rscs[ch.RscAlcLst[CurTask]].Hostid;
@@ -2028,18 +1768,12 @@ double CalculateECByDelta1(chromosome& ch, int& Number) {
 
 
 void UpdatePMR(vector<vector<double>>& PMR, chromosome& bstChrom) {
-    // 遍历所有任务
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        // 遍历所有资源
         for (int j = 0; j < comConst.NumOfRsc; ++j) {
             int count = 0;
-
-            // 如果当前最优染色体中的任务i被分配给资源j，则count设为1
             if (bstChrom.RscAlcLst[i] == j) {
                 count = 1;
             }
-
-            // 更新概率模型 PMR
             PMR[i][j] = (1 - Parameter_TSEDA.theta1) * PMR[i][j] + Parameter_TSEDA.theta1 * count;
         }
     }
@@ -2047,33 +1781,24 @@ void UpdatePMR(vector<vector<double>>& PMR, chromosome& bstChrom) {
 
 void UpdatePMS(vector<vector<double>>& PMS, chromosome& bstChrom) {
 
-    // 检查当前最优染色体的调度顺序是前向拓扑排序还是后向拓扑排序
     if (bstChrom.IsFrw) {
-        // 前向拓扑排序
         for (int i = 0; i < comConst.NumOfTsk; ++i) {
             for (int j = 0; j < comConst.NumOfTsk; ++j) {
                 int count = 0;
-
-                // 如果当前任务在调度列表中的位置等于当前索引j，则count设为1
                 if (bstChrom.TskSchLst[i] == j) {
                     count = 1;
                 }
-                //更新
                 PMS[j][i] = (1 - Parameter_TSEDA.theta2) * PMS[j][i] + Parameter_TSEDA.theta2 * count;
             }
         }
     }
     else {
-        // 后向拓扑排序
         for (int i = 0; i < comConst.NumOfTsk; ++i) {
             for (int j = 0; j < comConst.NumOfTsk; ++j) {
                 int count = 0;
-
-                // 如果当前任务在调度列表中的倒数第i个位置等于当前索引j，则count设为1
                 if (bstChrom.TskSchLst[comConst.NumOfTsk - i - 1] == j) {
                     count = 1;
                 }
-                // 更新调度概率模型 PMS
                 PMS[j][i] = (1 - Parameter_TSEDA.theta2) * PMS[j][i] + Parameter_TSEDA.theta2 * count;
             }
         }
