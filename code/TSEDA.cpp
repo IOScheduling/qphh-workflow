@@ -32,8 +32,8 @@ chromosome runTSEDA(string Model, string ECfileName, string XmlFile, string RscA
 
      //    #pragma omp parallel for
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
-        NumOfAncestors[i] = Ancestors[i].size();/
-        NumOfDescendants[i] = Descendants[i].size();/
+        NumOfAncestors[i] = Ancestors[i].size();
+        NumOfDescendants[i] = Descendants[i].size();
         NumOfNonDescendants[i] = comConst.NumOfTsk - NumOfDescendants[i];
     }
 
