@@ -7,40 +7,25 @@ using namespace std;
 
 
 
-/*****************************************************
- Function：将任务按层级进行分类
- Input：comConst
- Output：按层级分类的任务列表TakLstInlvl
-       例如： 
-       Task 0 --> Task 1 --> Task 3
-         \        /
-          \--> Task 2
-
-       TakLstInlvl = [[0],[1,2],[3]]
-*****************************************************/
 void CalculateLevelList() {
-    LevelIdOfTask.resize(comConst.NumOfTsk); //用来存储每个任务的层级
-    vector<int> InDegree;   //用来记录尚未计算其级别的符任务数  variables for recording the number of parent tasks whose level have not been calculated;用于记录尚未计算其级别的父任务数的变量
-    vector<int> stk;        //用来记录入度为0的任务索引集合 a set for recording the index of tasks whose inDegree is equal to 0;
-    InDegree.assign(comConst.NumOfTsk, 0);//初始化InDegree
-    
-    //计算每个任务的入度
+    LevelIdOfTask.resize(comConst.NumOfTsk); 
+    vector<int> InDegree;   
+    vector<int> stk;       
+    InDegree.assign(comConst.NumOfTsk, 0);
+
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         InDegree[i] = Tasks[i].parents.size();
     }
 
-    //初始化入度为0的任务集合
     for (int i = 0; i < comConst.NumOfTsk; ++i) {
         if (InDegree[i] == 0) stk.push_back(i);
     }
 
-    //计算任务层级并分类
     int MaxLevel = 0;
     while (!stk.empty()) {
         int v = stk[0];
         LevelIdOfTask[v] = 0;
 
-        //计算任务 v 的层级，层级取其所有父任务层级的最大值加1
         for (int i = 0; i < Tasks[v].parents.size(); ++i) {
             if (LevelIdOfTask[Tasks[v].parents[i]] >= LevelIdOfTask[v]) {
                 LevelIdOfTask[v] = LevelIdOfTask[Tasks[v].parents[i]] + 1;
@@ -62,27 +47,12 @@ void CalculateLevelList() {
     }
 }
 
-/*****************************************************
-Function:得到任务的子任务
-       例如：
-       Task 0 --> Task 1 --> Task 3
-         \        /
-          \--> Task 2
-        
-      Descendants = [ {1, 2, 3}, {3}, {3}, {} ]
-*****************************************************/
+
 void CalculateDescendants() {
     Descendants.resize(comConst.NumOfTsk);
 
-    //从倒数第二层进行遍历，因为最底层无子任务
     for (int i = TskLstInLvl.size() - 2; i >= 0; --i) {
-        //处理每个任务，对于每一层中的每个任务‘taskId’
         for (int taskId : TskLstInLvl[i]) {
-            
-            //对于每个子任务 childId：
-                //将 childId 插入到 taskId 的后代集合中。
-                //将 childId 的所有后代任务插入到 taskId 的后代集合中。
-
             for (int childId : Tasks[taskId].children) {
                 Descendants[taskId].insert(childId);
                 Descendants[taskId].insert(Descendants[childId].begin(), Descendants[childId].end());
@@ -91,15 +61,7 @@ void CalculateDescendants() {
     }
 }
 
-/*****************************************************
-Function:得到任务的父任务
-       例如：
-       Task 0 --> Task 1 --> Task 3
-         \        /
-          \--> Task 2
 
-     Ancestors = [ {}, {0}, {0}, {0, 1, 2} ]
-*****************************************************/
 void CalculateAncestors() {
     Ancestors.resize(comConst.NumOfTsk);
     for (int i = 1; i < TskLstInLvl.size(); ++i) {
@@ -112,14 +74,6 @@ void CalculateAncestors() {
     }
 }
 
-/*****************************************************
-Function:根据value向量中的值对ind向量中的索引进行升序排序。
-会对 value 向量中的值进行排序，但不会改变 value 向量本身的顺序,
-而是生成一个排序后的索引列表。
-
-value使用引用&传参，可以避免不必要的拷贝，减少开销
-
-*****************************************************/
 void IndexSortByValueOnAscend(vector<int>& ind, vector<double>& value) {
     for (int i = 0; i < ind.size(); ++i) {
         ind[i] = i;
@@ -244,7 +198,7 @@ double CalculatePowerByLoad(double ld, int HTid) {
     else if (HTid % 3 == 2) {
         //{L: Lenovo Global Technology ThinkSystem SR150}-1
         if (ld <= 0.1) {
-            //return ld * 3.2 + 16.8;//20  数据错误
+            //return ld * 3.2 + 16.8;
             return ld * 32 + 16.8;//20
         }
         else if (ld <= 0.2) {
