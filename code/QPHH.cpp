@@ -134,7 +134,7 @@ bool areAllParentsBefore(Task task, vector<int> sequence, int taskIndex, int& fi
 }
 
 
-chromosome alignRandChrom(vector<int> originTskSeq) {
+chromosome alignRandChrom(vector<int> & originTskSeq) {
 	chromosome	TempRandChrom;
 	for (int j = 0; j < originTskSeq.size(); j++) {
 		int taskIndex = originTskSeq[j];
